@@ -56,24 +56,33 @@ cp -r ~/.n8n ~/.n8n-backup-$(date +%Y%m%d)
 ### 2️⃣ Backup Automation / Website Directory
 
 ```
-cd /home2/yzzyconnect/public_html/automation.yzzyconnect.com
- tar -czvf automation.yzzyconnect.com.tar.gz *
+cd /home2/user/public_html/
+ tar -czvf domain.tar.gz *
 ```
 
 ---
 
 ## 🚀 Step-by-Step Upgrade Process (Actual Steps Used)
 
-### Step 1: Check and Stop n8n
+### Step 1: Switch to Website / Automation Document Root
+
+Before running any npm or PM2 commands, move into the website / automation document root where n8n is installed locally.
+
+cd /home/user/public_html/
+
+This ensures all npm operations apply to the local user installation (not global).
+
+### Step 2: Check and Stop n8n
 
 ```
 pm2 status
 pm2 stop n8n
 ```
 
+
 ---
 
-### Step 2: Backup `package.json`
+### Step 3: Backup `package.json`
 
 ```
 cp -prf package.json package.json_bk
@@ -81,7 +90,7 @@ cp -prf package.json package.json_bk
 
 ---
 
-### Step 3: Edit `package.json`
+### Step 4: Edit `package.json`
 
 ```
 vim package.json
@@ -105,7 +114,7 @@ Edit the dependency version:
 
 ---
 
-### Step 4: Upgrade n8n (Local Install – NO `-g`)
+### Step 5: Upgrade n8n (Local Install – NO `-g`)
 
 From the project directory:
 
@@ -128,7 +137,7 @@ npm update n8n
 
 ---
 
-### Step 5: Restart n8n
+### Step 6: Restart n8n
 
 ```
 pm2 restart n8n
@@ -192,8 +201,4 @@ pm2 restart n8n
 
 ---
 
-## 🧠 Final Notes
 
-This page is **ready to copy–paste directly into a GitHub Wiki**.
-
-It reflects the **exact upgrade method used on this server**, ensuring safe upgrades and easy rollback for **user-installed n8n running under PM2**.
