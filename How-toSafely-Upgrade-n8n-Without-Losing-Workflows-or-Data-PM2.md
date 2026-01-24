@@ -1,235 +1,170 @@
-```markdown
-# How to Safely Upgrade n8n Without Losing Workflows or Data (PM2)
+# How to Safely Upgrade n8n (User / Local Install with PM2)
 
-> **Applies to:** PM2-based n8n installations on cPanel servers, VPS, and dedicated Linux servers
+> **Applies to:** User-level (local) n8n installations managed by **PM2** on cPanel servers, VPS, and dedicated Linux servers
 
 ---
 
 ## 📌 Overview
 
-Upgrading **n8n** is necessary to receive new features, bug fixes, security patches, and performance improvements. When done correctly, upgrading **does not delete workflows, credentials, or execution data**.
+This guide documents the **exact upgrade process used on this server**, where **n8n is installed under a user (not globally)** and managed by **PM2**.
 
-This guide explains:
+In this setup:
 
-- Where n8n stores its data  
-- How to safely back it up  
-- How to upgrade n8n when running under **PM2**  
-- How to roll back safely if something goes wrong  
-
----
-
-## 📂 Where n8n Stores Your Data
-
-All important n8n data is stored in the **`.n8n` directory**, including:
-
-- Workflows  
-- Credentials  
-- Execution history  
-- Encryption key and configuration  
-
-**Default location:**
-
-```
-
-/home/your-username/.n8n
-
-```
-
-✅ As long as this directory is not deleted or overwritten, your data will remain intact after upgrading n8n.
+* n8n is installed **locally inside the project directory**
+* `package.json` controls the n8n version
+* **`-g` (global install) is NOT used**
+* Workflows and credentials are stored separately in the `.n8n` directory
 
 ---
 
-## 💾 Recommended: Back Up n8n Data
+## 📂 Where n8n Stores Data
 
-Always back up the `.n8n` directory before upgrading.
+All important n8n data is stored in the `.n8n` directory:
 
 ```
+/root/.n8n
+```
 
+This includes:
+
+* Workflows
+* Credentials
+* Execution history
+* Encryption key and settings
+
+✅ As long as this directory is preserved, upgrading n8n will **not** delete data.
+
+---
+
+## 💾 Backups Taken Before Upgrade
+
+### 1️⃣ Backup n8n Data
+
+```
+cd /root
+ tar -czvf .n8n.tar.gz .n8n
+```
+
+Additional safety backup:
+
+```
 cp -r ~/.n8n ~/.n8n-backup-$(date +%Y%m%d)
-
 ```
 
 ---
 
-## 🌐 Optional: Backup Website / Document Root (cPanel or Any Server)
-
-If your server hosts websites, you may also want a quick document root backup.
+### 2️⃣ Backup Automation / Website Directory
 
 ```
-
-cd /home/username/public_html
-tar -czvf domain-backup-$(date +%Y%m%d).tar.gz *
-
+cd /home2/yzzyconnect/public_html/automation.yzzyconnect.com
+ tar -czvf automation.yzzyconnect.com.tar.gz *
 ```
 
 ---
 
-## 🚀 Step-by-Step: Upgrade n8n
+## 🚀 Step-by-Step Upgrade Process (Actual Steps Used)
 
-### Step 1: Stop n8n
-
-**Using PM2 (recommended):**
+### Step 1: Check and Stop n8n
 
 ```
-
-pm2 stop n8n
 pm2 status
-
-```
-
-**Using systemd:**
-
-```
-
-sudo systemctl stop n8n
-
+pm2 stop n8n
 ```
 
 ---
 
-### Step 2: Upgrade n8n via npm
-
-✅ **Recommended method:**
+### Step 2: Backup `package.json`
 
 ```
-
-sudo npm install -g n8n --unsafe-perm=true
-
-```
-
-⚠️ **Not recommended:**
-
-```
-
-sudo npm update -g n8n
-
+cp -prf package.json package.json_bk
 ```
 
 ---
 
-## 🛠️ Troubleshooting Common Errors
-
-### ENOTEMPTY Error
+### Step 3: Edit `package.json`
 
 ```
-
-npm ERR! ENOTEMPTY: directory not empty, rename
-'/usr/lib/node_modules/n8n' -> '/usr/lib/node_modules/.n8n-xxxx'
-
+vim package.json
 ```
 
-**Fix:**
+Edit the dependency version:
 
+```json
+{
+  "dependencies": {
+    "n8n": "<desired-version>"
+  }
+}
 ```
 
-sudo rm -rf /usr/lib/node_modules/.n8n-*
-sudo npm install -g n8n --unsafe-perm=true
+> Example:
+>
+> ```json
+> "n8n": "1.28.0"
+> ```
+
+---
+
+### Step 4: Upgrade n8n (Local Install – NO `-g`)
+
+From the project directory:
 
 ```
-
-**Permission fix (if needed):**
-
+npm install n8n --unsafe-perm=true
 ```
 
-sudo chown -R $(whoami) /usr/lib/node_modules
+Or install a specific version:
 
 ```
-
-**Last resort:**
-
+npm install n8n@1.28.0 --unsafe-perm=true
 ```
 
-sudo npm install -g n8n --unsafe-perm=true --force
+⚠️ Do **NOT** use:
 
+```
+npm install -g n8n
+npm update n8n
 ```
 
 ---
 
-## ✅ Verify Upgrade
+### Step 5: Restart n8n
 
 ```
-
-n8n --version
-
-```
-
----
-
-## 🔄 Restart n8n
-
-**PM2:**
-
-```
-
 pm2 restart n8n
 pm2 status
-
-```
-
-**systemd:**
-
-```
-
-sudo systemctl start n8n
-sudo systemctl status n8n
-
 ```
 
 ---
 
-## 🔁 Enable Auto-Start on Boot
-
-**PM2:**
+### Step 6: Verify Version
 
 ```
-
-pm2 startup
-pm2 save
-
-```
-
-**systemd:**
-
-```
-
-sudo systemctl enable n8n
-
+npx n8n --version
 ```
 
 ---
 
-## 🔙 Rollback / Restore Guide (If Upgrade Fails)
+## 🔙 Rollback / Restore Guide
 
 ### Scenario 1: n8n Starts but Data Is Missing
 
 ```
-
 pm2 stop n8n
 mv ~/.n8n ~/.n8n-broken-$(date +%Y%m%d)
 cp -r ~/.n8n-backup-YYYYMMDD ~/.n8n
 pm2 restart n8n
-
 ```
 
 ---
 
-### Scenario 2: n8n Fails to Start
+### Scenario 2: n8n Fails to Start After Upgrade
 
 ```
-
 pm2 logs n8n
-sudo npm install -g n8n@<previous-version> --unsafe-perm=true
-cp -r ~/.n8n-backup-YYYYMMDD ~/.n8n
+pm2 stop n8n
+npm install n8n@<previous-version> --unsafe-perm=true
 pm2 restart n8n
-
-```
-
-Example:
-
-```
-
-sudo npm install -g n8n@1.28.0 --unsafe-perm=true
-
 ```
 
 ---
@@ -237,30 +172,28 @@ sudo npm install -g n8n@1.28.0 --unsafe-perm=true
 ### Scenario 3: Full Restore (Last Resort)
 
 ```
-
 pm2 stop n8n
-sudo npm uninstall -g n8n
-sudo npm install -g n8n --unsafe-perm=true
+rm -rf node_modules/n8n
+npm install n8n@<previous-version> --unsafe-perm=true
 cp -r ~/.n8n-backup-YYYYMMDD ~/.n8n
 pm2 restart n8n
-
 ```
 
 ---
 
-## 📋 Best Practices Summary
+## 📋 Best Practices (Local Install)
 
-- Stop n8n before upgrading  
-- Always back up `.n8n`  
-- Use `npm install -g n8n --unsafe-perm=true`  
-- Keep at least one known-good backup  
-- Upgrade during low-traffic hours  
+* Always stop n8n before upgrading
+* Always back up `.n8n`
+* Do **not** use `-g` for user installs
+* Control versions via `package.json`
+* Use `pm2 restart`, not `pm2 start`
+* Keep at least one working backup
 
 ---
 
 ## 🧠 Final Notes
 
-This page is ready to **copy–paste directly into a GitHub Wiki**.
+This page is **ready to copy–paste directly into a GitHub Wiki**.
 
-Following this guide ensures safe **upgrade, rollback, and recovery** of n8n on **cPanel servers, VPSs, and dedicated Linux servers** running n8n with PM2.
-```
+It reflects the **exact upgrade method used on this server**, ensuring safe upgrades and easy rollback for **user-installed n8n running under PM2**.
